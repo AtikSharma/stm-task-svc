@@ -26,9 +26,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class TaskEntity {
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)
 	private String id;
+
+	@Column(nullable = false, unique = true)
+	private Long taskNumber;
 
 	@Column(nullable = false)
 	private String title;
@@ -37,7 +41,7 @@ public class TaskEntity {
 	private String description;
 
 	@Enumerated(EnumType.STRING)
-	private TaskStatus status = TaskStatus.TO_DO;
+	private TaskStatus status;
 
 	@Enumerated(EnumType.STRING)
 	private Priority priority = Priority.MEDIUM;
