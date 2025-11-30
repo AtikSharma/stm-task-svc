@@ -53,6 +53,8 @@ public class TaskEntity {
 
 	private String assignedTo;
 
+    private String updatedBy;
+
 	private LocalDateTime createdAt = LocalDateTime.now();
 	private LocalDateTime updatedAt = LocalDateTime.now();
 

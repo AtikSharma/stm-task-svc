@@ -66,4 +66,18 @@ public class TaskDaoImpl implements TaskDao {
     public Optional<TaskBase> getTaskById(String taskId) {
         return taskRepo.findById(taskId).map(taskEntityMapper::mapFrom);
     }
+
+    @Override
+    public TaskBase updateTask(TaskBase taskToBeUpdated) {
+        TaskEntity existingEntity = taskRepo.findById(taskToBeUpdated.getId())
+                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskToBeUpdated.getId()));
+        TaskEntity taskEntity = taskEntityMapper.mapToForUpdate(taskToBeUpdated,existingEntity);
+        TaskEntity savedEntity = taskRepo.save(taskEntity);
+        return taskEntityMapper.mapFrom(savedEntity);
+    }
+
+    @Override
+    public void deleteTask(String taskId) {
+        taskRepo.deleteById(taskId);
+    }
 }

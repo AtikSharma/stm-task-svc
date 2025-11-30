@@ -13,4 +13,8 @@ public interface TaskDao {
     Page<TaskBase> searchTasks(TaskSearchRequest taskSearchRequest);
 
     Optional<TaskBase> getTaskById(String taskId);
+
+    TaskBase updateTask(TaskBase taskToBeUpdated);
+
+    void deleteTask(String taskId);
 }

@@ -1,6 +1,7 @@
 package com.taskmanager.task.model.request;
 
 import com.taskmanager.common.enums.Priority;
+import com.taskmanager.common.enums.TaskStatus;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,13 +13,17 @@ import java.time.LocalDate;
 @Setter
 @SuperBuilder(toBuilder = true)
 @NoArgsConstructor
-public class CreateTaskRequest {
+public class UpdateTaskRequest {
 
     private String title;
 
     private String description;
 
+    private TaskStatus status;
+
     private Priority priority;
+
+    private String assignedTo;
 
     private LocalDate dueDate;
 

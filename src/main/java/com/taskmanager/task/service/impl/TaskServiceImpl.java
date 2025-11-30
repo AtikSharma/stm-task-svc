@@ -1,12 +1,13 @@
 package com.taskmanager.task.service.impl;
 
 import com.taskmanager.common.client.UserServiceClient;
-import com.taskmanager.common.enums.Priority;
+import com.taskmanager.common.enums.Role;
 import com.taskmanager.common.enums.TaskStatus;
 import com.taskmanager.common.model.TaskBase;
 import com.taskmanager.common.model.User;
 import com.taskmanager.common.model.UserBase;
 import com.taskmanager.task.dao.TaskDao;
+import com.taskmanager.task.mapper.TaskBOMapper;
 import com.taskmanager.task.model.request.TaskSearchRequest;
 import com.taskmanager.task.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,11 +27,13 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskDao taskDao;
     private final UserServiceClient userServiceClient;
+    private final TaskBOMapper taskBOMapper;
 
     @Autowired
-    public TaskServiceImpl(TaskDao taskDao, UserServiceClient userServiceClient) {
+    public TaskServiceImpl(TaskDao taskDao, UserServiceClient userServiceClient, TaskBOMapper taskBOMapper) {
         this.taskDao = taskDao;
         this.userServiceClient = userServiceClient;
+        this.taskBOMapper = taskBOMapper;
     }
 
     @Override
@@ -41,40 +44,60 @@ public class TaskServiceImpl implements TaskService {
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
         task = taskDao.createTask(task);
-        updateTaskUserDetails(task, getUsersMap());
+        updateTaskUserDetails(task, getUsersMap(false));
         return task;
     }
 
     @Override
-    public void assignTaskToUser(String taskId, String userId) {
+    public void assignTaskToUser(TaskBase taskToBeAssigned) {
+        updateTask(taskToBeAssigned);
+    }
 
+    @Override
+    public void updateTaskStatus(TaskBase taskToBeUpdated) {
+        TaskBase taskToBeAssigned = getTaskById(taskToBeUpdated.getId());
+        validateTaskAssignedToUser(taskToBeAssigned, taskToBeUpdated.getUpdatedBy().getId());
+        taskToBeAssigned = taskToBeAssigned.toBuilder().status(taskToBeUpdated.getStatus()).updatedBy(taskToBeUpdated.getUpdatedBy()).build();
+        taskDao.updateTask(taskToBeAssigned);
+    }
+
+    // Validate if the task is assigned to the user trying to update the status
+    private void validateTaskAssignedToUser(TaskBase taskToBeAssigned, String updatedBy) {
+        String assignedTo = Optional.ofNullable(taskToBeAssigned.getAssignedTo())
+                .map(UserBase::getId)
+                .orElse(null);
+
+        User user = userServiceClient.getUserDetailsById(updatedBy, true);
+
+        if (user == null) {
+            throw new IllegalArgumentException("User with ID " + updatedBy + " not found.");
+        } else if (!user.getRole().equals(Role.MANAGER)) {
+            if (assignedTo == null || !assignedTo.equals(updatedBy)) {
+                throw new IllegalArgumentException("Task with ID " + taskToBeAssigned.getId() + " is not assigned to user with ID " + updatedBy + ".");
+            }
+        }
 
     }
 
     @Override
-    public void updateTaskPriority(String taskId, Priority priority) {
-
-    }
-
-    @Override
-    public void updateTaskStatus(String taskId, TaskStatus status) {
-
-    }
-
-    @Override
-    public TaskBase updateTask(TaskBase task) {
-        return null;
+    public TaskBase updateTask(TaskBase updatedTask) {
+        TaskBase taskToBeUpdated = getTaskById(updatedTask.getId());
+        taskBOMapper.updateTaskFromBO(updatedTask, taskToBeUpdated);
+        TaskBase savedTask = taskDao.updateTask(taskToBeUpdated);
+        updateTaskUserDetails(savedTask, getUsersMap(false));
+        return savedTask;
     }
 
     @Override
     public void deleteTask(String taskId) {
-
+        getTaskById(taskId);
+        taskDao.deleteTask(taskId);
     }
 
     @Override
     public List<TaskBase> searchTasks(TaskSearchRequest request) {
         Page<TaskBase> tasks = taskDao.searchTasks(request);
-        Map<String, UserBase> usersMap = getUsersMap();
+        Map<String, UserBase> usersMap = getUsersMap(false);
         tasks.forEach(task -> updateTaskUserDetails(task, usersMap));
         return tasks.getContent();
     }
@@ -89,22 +112,34 @@ public class TaskServiceImpl implements TaskService {
     }
 
 
-    private Map<String, UserBase> getUsersMap() {
-        List<User> users = userServiceClient.getAllUsers();
-        return users.stream().collect(Collectors.toMap(UserBase::getId, Function.identity()));
+    private Map<String, UserBase> getUsersMap(boolean fetchSensitiveInfo) {
+        List<User> users = userServiceClient.getAllUsers(fetchSensitiveInfo);
+        return users.stream().map(taskBOMapper::userToUserBase).collect(Collectors.toMap(UserBase::getId, Function.identity()));
     }
 
     private void updateTaskUserDetails(TaskBase task, Map<String, UserBase> usersMap) {
-        String createdBy = task.getCreatedBy().getId();
+        String createdBy = Optional.ofNullable(task.getCreatedBy())
+                .map(UserBase::getId)
+                .orElse(null);
+
+        String updatedBy = Optional.ofNullable(task.getUpdatedBy())
+                .map(UserBase::getId)
+                .orElse(null);
+
         String assignedTo = Optional.ofNullable(task.getAssignedTo())
                 .map(UserBase::getId)
                 .orElse(null);
 
-        if (usersMap.containsKey(createdBy)) {
-            task.setCreatedBy(usersMap.get(createdBy));
-        }
         if (assignedTo != null && usersMap.containsKey(assignedTo)) {
             task.setAssignedTo(usersMap.get(assignedTo));
+        }
+
+        if (createdBy != null && usersMap.containsKey(createdBy)) {
+            task.setCreatedBy(usersMap.get(createdBy));
+        }
+
+        if (updatedBy != null && usersMap.containsKey(updatedBy)) {
+            task.setUpdatedBy(usersMap.get(updatedBy));
         }
     }
 }

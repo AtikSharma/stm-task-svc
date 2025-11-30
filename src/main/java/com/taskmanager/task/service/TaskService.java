@@ -1,10 +1,8 @@
 package com.taskmanager.task.service;
 
-import com.taskmanager.common.enums.Priority;
 import com.taskmanager.common.enums.TaskStatus;
 import com.taskmanager.common.model.TaskBase;
 import com.taskmanager.task.model.request.TaskSearchRequest;
-import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -14,13 +12,10 @@ public interface TaskService {
     TaskBase createTask(TaskBase task);
 
     //Assign an existing task to a user
-    void assignTaskToUser(String taskId, String userId);
-
-    //Update the priority of an existing task
-    void updateTaskPriority(String taskId, Priority priority);
+    void assignTaskToUser(TaskBase taskToBeAssigned);
 
     //Update the status of an existing task
-    void updateTaskStatus(String taskId, TaskStatus status);
+    void updateTaskStatus(TaskBase taskToBeUpdated);
 
     //Update an existing task
     TaskBase updateTask(TaskBase task);
