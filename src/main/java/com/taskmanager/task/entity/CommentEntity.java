@@ -1,21 +1,13 @@
 package com.taskmanager.task.entity;
 
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-@Entity
-@Table(name = "comments")
+@Document(collection = "comments")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,18 +15,17 @@ import lombok.Setter;
 @Builder
 public class CommentEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	private String id;
+    @Id
+    private String id;
 
-	@Column(nullable = false)
-	private String taskId;
+    @NotNull
+    private String taskId;
 
-	@Column(nullable = false)
-	private String commentedBy;
+    @NotNull
+    private String commentedBy;
 
-	@Column(columnDefinition = "TEXT", nullable = false)
-	private String content;
+    @NotNull
+    private String content;
 
-	private LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }

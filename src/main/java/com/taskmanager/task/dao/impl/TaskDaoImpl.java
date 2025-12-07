@@ -9,24 +9,30 @@ import com.taskmanager.task.repo.TaskRepo;
 import com.taskmanager.task.repo.TaskSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 public class TaskDaoImpl implements TaskDao {
 
     private final TaskRepo taskRepo;
     private final TaskEntityMapper taskEntityMapper;
+    private final MongoTemplate mongoTemplate;
 
     @Autowired
-    public TaskDaoImpl(TaskRepo taskRepo, TaskEntityMapper taskEntityMapper) {
+    public TaskDaoImpl(TaskRepo taskRepo, TaskEntityMapper taskEntityMapper, MongoTemplate mongoTemplate) {
         this.taskRepo = taskRepo;
         this.taskEntityMapper = taskEntityMapper;
+        this.mongoTemplate = mongoTemplate;
     }
 
     @Override
@@ -38,10 +44,9 @@ public class TaskDaoImpl implements TaskDao {
 
     @Override
     public Page<TaskBase> searchTasks(TaskSearchRequest request) {
-        Specification<TaskEntity> spec = TaskSpecification.build(request);
-
+        // determine sort and pageable
         Sort sort = null;
-        Pageable pageable = null;
+        Pageable pageable;
 
         if (request.getSortDirection() != null && request.getSortBy() != null) {
             sort = Sort.by(request.getSortDirection(), request.getSortBy());
@@ -52,14 +57,39 @@ public class TaskDaoImpl implements TaskDao {
         } else if (request.getPage() != null && request.getSize() != null) {
             pageable = PageRequest.of(request.getPage(), request.getSize());
         } else if (sort != null) {
-            pageable = PageRequest.of(0, Integer.MAX_VALUE, sort); // default to first page with max size
+            // when only sort is present, default to first page with max size (match provided snippet)
+            pageable = PageRequest.of(0, Integer.MAX_VALUE, sort);
         } else {
             pageable = Pageable.unpaged();
         }
 
-        Page<TaskEntity> result = taskRepo.findAll(spec, pageable);
+        // prepare query for fetching results
+        Query fetchQuery = TaskSpecification.build(request);
+        if (pageable.isPaged()) {
+            fetchQuery.with(pageable);
+        } else if (sort != null) {
+            fetchQuery.with(sort);
+        }
 
-        return result.map(taskEntityMapper::mapFrom);
+        List<TaskEntity> entities = mongoTemplate.find(fetchQuery, TaskEntity.class);
+
+        long total = entities.size();
+
+        // create Page object
+        Page<TaskEntity> entityPage;
+        if (pageable.isPaged()) {
+            entityPage = new PageImpl<>(entities, pageable, total);
+        } else {
+            // unpaged: wrap results and provide total
+            entityPage = new PageImpl<>(entities, Pageable.unpaged(), total);
+        }
+
+        // map entities to TaskBase
+        List<TaskBase> mapped = entityPage.stream()
+                .map(taskEntityMapper::mapFrom)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(mapped, entityPage.getPageable(), entityPage.getTotalElements());
     }
 
     @Override
@@ -71,7 +101,7 @@ public class TaskDaoImpl implements TaskDao {
     public TaskBase updateTask(TaskBase taskToBeUpdated) {
         TaskEntity existingEntity = taskRepo.findById(taskToBeUpdated.getId())
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskToBeUpdated.getId()));
-        TaskEntity taskEntity = taskEntityMapper.mapToForUpdate(taskToBeUpdated,existingEntity);
+        TaskEntity taskEntity = taskEntityMapper.mapToForUpdate(taskToBeUpdated, existingEntity);
         TaskEntity savedEntity = taskRepo.save(taskEntity);
         return taskEntityMapper.mapFrom(savedEntity);
     }

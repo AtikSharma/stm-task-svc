@@ -1,57 +1,66 @@
 package com.taskmanager.task.repo;
 
-import com.taskmanager.task.entity.TaskEntity;
 import com.taskmanager.task.model.request.TaskSearchRequest;
-import jakarta.persistence.criteria.Predicate;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class TaskSpecification {
 
+    public static Query build(TaskSearchRequest request) {
+        Query query = new Query();
+        if (request == null) {
+            return query;
+        }
 
-    public static Specification<TaskEntity> build(TaskSearchRequest request) {
-        return (root, query, cb) -> {
-            if (request == null) {
-                return cb.conjunction();
-            }
+        List<Criteria> criteriaList = new ArrayList<>();
 
-           List<Predicate> predicates = new ArrayList<>();
+        if (request.getTaskNumber() != null) {
+            criteriaList.add(Criteria.where("taskNumber").is(request.getTaskNumber()));
+        }
+        if (request.getAssignedUserId() != null) {
+            criteriaList.add(Criteria.where("assignedTo").is(request.getAssignedUserId()));
+        }
+        if (request.getPriority() != null) {
+            criteriaList.add(Criteria.where("priority").is(request.getPriority()));
+        }
+        if (request.getStatus() != null) {
+            criteriaList.add(Criteria.where("status").is(request.getStatus()));
+        }
+        if (request.getCreatedByUserId() != null) {
+            criteriaList.add(Criteria.where("createdBy").is(request.getCreatedByUserId()));
+        }
 
-            if (request.getTaskNumber() != null) {
-                predicates.add(cb.equal(root.get("taskNumber"), request.getTaskNumber()));
+        if (request.getDueDateFrom() != null && request.getDueDateTo() != null) {
+            criteriaList.add(Criteria.where("dueDate").gte(request.getDueDateFrom()).lte(request.getDueDateTo()));
+        } else {
+            if (request.getDueDateFrom() != null) {
+                criteriaList.add(Criteria.where("dueDate").gte(request.getDueDateFrom()));
             }
-            if (request.getAssignedUserId() != null) {
-                predicates.add(cb.equal(root.get("assignedTo"), request.getAssignedUserId()));
+            if (request.getDueDateTo() != null) {
+                criteriaList.add(Criteria.where("dueDate").lte(request.getDueDateTo()));
             }
-            if (request.getPriority() != null) {
-                predicates.add(cb.equal(root.get("priority"), request.getPriority()));
-            }
-            if (request.getStatus() != null) {
-                predicates.add(cb.equal(root.get("status"), request.getStatus()));
-            }
-            if (request.getCreatedByUserId() != null) {
-                predicates.add(cb.equal(root.get("createdBy"), request.getCreatedByUserId()));
-            }
+        }
 
-            if (request.getDueDateFrom() != null && request.getDueDateTo() != null) {
-                predicates.add(cb.between(root.get("dueDate"), request.getDueDateFrom(), request.getDueDateTo()));
-            } else {
-                if (request.getDueDateFrom() != null) {
-                    predicates.add(cb.greaterThanOrEqualTo(root.get("dueDate"), request.getDueDateFrom()));
-                }
-                if (request.getDueDateTo() != null) {
-                    predicates.add(cb.lessThanOrEqualTo(root.get("dueDate"), request.getDueDateTo()));
-                }
-            }
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            String title = request.getTitle().trim();
+            Pattern pattern = Pattern.compile(".*" + Pattern.quote(title) + ".*", Pattern.CASE_INSENSITIVE);
+            criteriaList.add(Criteria.where("title").regex(pattern));
+        }
 
-            if (request.getTitle() != null && !request.getTitle().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("title")), "%" + request.getTitle().toLowerCase() + "%"));
-            }
+        if (!criteriaList.isEmpty()) {
+            Criteria combined = new Criteria().andOperator(criteriaList.toArray(new Criteria[0]));
+            query.addCriteria(combined);
+        }
 
-            System.out.println("Specification predicates: " + predicates);
-            return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
-        };
+        System.out.println("MongoDB Query: " + query);
+        return query;
+    }
+
+    private TaskSpecification() {
+        // utility
     }
 }

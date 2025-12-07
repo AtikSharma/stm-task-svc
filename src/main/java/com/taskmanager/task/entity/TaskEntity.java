@@ -1,61 +1,54 @@
 package com.taskmanager.task.entity;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
 import com.taskmanager.common.enums.Priority;
 import com.taskmanager.common.enums.TaskStatus;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "tasks")
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Document(collection = "tasks")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class TaskEntity {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	private String id;
+    @Id
+    private String id;
 
-	@Column(nullable = false, unique = true)
-	private Long taskNumber;
+    @Field
+    private Long taskNumber;
 
-	@Column(nullable = false)
-	private String title;
+    @Indexed(unique = true)
+    private String title;
 
-	@Column(columnDefinition = "TEXT")
-	private String description;
+    private String description;
 
-	@Enumerated(EnumType.STRING)
-	private TaskStatus status;
+    private TaskStatus status;
 
-	@Enumerated(EnumType.STRING)
-	private Priority priority = Priority.MEDIUM;
 
-	private LocalDate dueDate;
+    private Priority priority = Priority.MEDIUM;
 
-	@Column(nullable = false)
-	private String createdBy;
+    private LocalDate dueDate;
 
-	private String assignedTo;
+    @NotNull
+    private String createdBy;
+
+    private String assignedTo;
 
     private String updatedBy;
 
-	private LocalDateTime createdAt = LocalDateTime.now();
-	private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
 }
