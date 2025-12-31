@@ -6,6 +6,7 @@ import com.taskmanager.common.constants.JwtConstants;
 import com.taskmanager.common.enums.Role;
 import com.taskmanager.common.model.ServiceResponse;
 import com.taskmanager.common.model.TaskBase;
+import com.taskmanager.common.model.response.TaskResponse;
 import com.taskmanager.common.util.JwtUtils;
 import com.taskmanager.task.mapper.TaskBOMapper;
 import com.taskmanager.task.model.request.CreateTaskRequest;
@@ -37,28 +38,31 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<TaskBase> createTask(@RequestBody CreateTaskRequest createTaskRequest, @RequestHeader(name = RequestContext.HEADER_FIELD_AUTHORIZATION, defaultValue = JwtConstants.DEFAULT_AUTHORIZATION, required = true) String authorizationHeader) {
+    public ResponseEntity<TaskResponse> createTask(@RequestBody CreateTaskRequest createTaskRequest, @RequestHeader(name = RequestContext.HEADER_FIELD_AUTHORIZATION, defaultValue = JwtConstants.DEFAULT_AUTHORIZATION, required = true) String authorizationHeader) {
         jwtUtils.validateAccess(authorizationHeader, Role.MANAGER);
         String userId = jwtUtils.extractUserIdFromToken(authorizationHeader);
         TaskBase taskBase = taskBOMapper.mapFromCreateTaskRequest(createTaskRequest, userId);
         taskBase = taskService.createTask(taskBase);
-        return new ServiceResponse().build("Task is Created", HttpStatus.CREATED, taskBase);
+        TaskResponse response = taskService.buildResponse(taskBase);
+        return new ServiceResponse().build("Task is Created", HttpStatus.CREATED, response);
     }
 
     @PostMapping(path = CommonConstants.API_SEARCH)
     public ResponseEntity<GetAllTasksResponse> searchTasks(@RequestBody TaskSearchRequest taskSearchRequest, @RequestHeader(name = RequestContext.HEADER_FIELD_AUTHORIZATION, defaultValue = JwtConstants.DEFAULT_AUTHORIZATION, required = true) String authorizationHeader) {
         jwtUtils.validateAccess(authorizationHeader, Role.getRoleList(Role.values()));
-        GetAllTasksResponse response = new GetAllTasksResponse(taskService.searchTasks(taskSearchRequest));
+        List<TaskBase> tasks = taskService.searchTasks(taskSearchRequest);
+        GetAllTasksResponse response = new GetAllTasksResponse(taskService.buildResponse(tasks));
         return response.build("Tasks Retrieved", HttpStatus.OK, response);
     }
 
     @PutMapping(path = CommonConstants.TASK_ID_PATH)
-    public ResponseEntity<TaskBase> updateTask(@RequestBody UpdateTaskRequest updateTaskRequest, @PathVariable String taskId, @RequestHeader(name = RequestContext.HEADER_FIELD_AUTHORIZATION, defaultValue = JwtConstants.DEFAULT_AUTHORIZATION, required = true) String authorizationHeader) {
+    public ResponseEntity<TaskResponse> updateTask(@RequestBody UpdateTaskRequest updateTaskRequest, @PathVariable String taskId, @RequestHeader(name = RequestContext.HEADER_FIELD_AUTHORIZATION, defaultValue = JwtConstants.DEFAULT_AUTHORIZATION, required = true) String authorizationHeader) {
         jwtUtils.validateAccess(authorizationHeader, Role.MANAGER);
         String updatedBy = jwtUtils.extractUserIdFromToken(authorizationHeader);
         TaskBase taskBase = taskBOMapper.mapFromUpdateTaskRequest(updateTaskRequest, taskId, updatedBy);
         taskBase = taskService.updateTask(taskBase);
-        return new ServiceResponse().build("Task is updated", HttpStatus.ACCEPTED, taskBase);
+        TaskResponse response = taskService.buildResponse(taskBase);
+        return new ServiceResponse().build("Task is updated", HttpStatus.ACCEPTED, response);
     }
 
     @DeleteMapping(path = CommonConstants.TASK_ID_PATH)
@@ -81,7 +85,7 @@ public class TaskController {
     public ResponseEntity<String> updateTaskStatus(@PathVariable String taskId, @RequestBody UpdateTaskStatusRequest request, @RequestHeader(name = RequestContext.HEADER_FIELD_AUTHORIZATION, defaultValue = JwtConstants.DEFAULT_AUTHORIZATION, required = true) String authorizationHeader) {
         jwtUtils.validateAccess(authorizationHeader, Role.getRoleList(Role.MANAGER, Role.USER));
         String updatedBy = jwtUtils.extractUserIdFromToken(authorizationHeader);
-        TaskBase taskToBeUpdated = taskBOMapper.mapForTaskStatusUpdate(taskId,  request.getStatus(), updatedBy);
+        TaskBase taskToBeUpdated = taskBOMapper.mapForTaskStatusUpdate(taskId, request.getStatus(), updatedBy);
         taskService.updateTaskStatus(taskToBeUpdated);
         return new ServiceResponse().build("Task status is updated", HttpStatus.OK, "Task Status Updated Successfully");
     }

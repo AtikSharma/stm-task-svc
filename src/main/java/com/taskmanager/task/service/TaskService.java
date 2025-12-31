@@ -2,6 +2,7 @@ package com.taskmanager.task.service;
 
 import com.taskmanager.common.enums.TaskStatus;
 import com.taskmanager.common.model.TaskBase;
+import com.taskmanager.common.model.response.TaskResponse;
 import com.taskmanager.task.model.request.TaskSearchRequest;
 
 import java.util.List;
@@ -26,5 +27,7 @@ public interface TaskService {
     //Search for tasks based on various criteria
     List<TaskBase> searchTasks(TaskSearchRequest taskSearchRequest);
 
+    TaskResponse buildResponse(TaskBase taskBase);
 
+    List<TaskResponse> buildResponse(List<TaskBase> taskBases);
 }

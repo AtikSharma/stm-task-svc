@@ -1,6 +1,8 @@
 package com.taskmanager.task.dao.impl;
 
+import com.taskmanager.common.model.CommentBase;
 import com.taskmanager.common.model.TaskBase;
+import com.taskmanager.task.dao.CommentDao;
 import com.taskmanager.task.dao.TaskDao;
 import com.taskmanager.task.entity.TaskEntity;
 import com.taskmanager.task.mapper.TaskEntityMapper;
@@ -8,11 +10,7 @@ import com.taskmanager.task.model.request.TaskSearchRequest;
 import com.taskmanager.task.repo.TaskRepo;
 import com.taskmanager.task.repo.TaskSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
@@ -27,12 +25,14 @@ public class TaskDaoImpl implements TaskDao {
     private final TaskRepo taskRepo;
     private final TaskEntityMapper taskEntityMapper;
     private final MongoTemplate mongoTemplate;
+    private final CommentDao commentDao;
 
     @Autowired
-    public TaskDaoImpl(TaskRepo taskRepo, TaskEntityMapper taskEntityMapper, MongoTemplate mongoTemplate) {
+    public TaskDaoImpl(TaskRepo taskRepo, TaskEntityMapper taskEntityMapper, MongoTemplate mongoTemplate, CommentDao commentDao) {
         this.taskRepo = taskRepo;
         this.taskEntityMapper = taskEntityMapper;
         this.mongoTemplate = mongoTemplate;
+        this.commentDao = commentDao;
     }
 
     @Override
@@ -87,6 +87,7 @@ public class TaskDaoImpl implements TaskDao {
         // map entities to TaskBase
         List<TaskBase> mapped = entityPage.stream()
                 .map(taskEntityMapper::mapFrom)
+                .peek(this::loadCommentsForTask)
                 .collect(Collectors.toList());
 
         return new PageImpl<>(mapped, entityPage.getPageable(), entityPage.getTotalElements());
@@ -94,7 +95,11 @@ public class TaskDaoImpl implements TaskDao {
 
     @Override
     public Optional<TaskBase> getTaskById(String taskId) {
-        return taskRepo.findById(taskId).map(taskEntityMapper::mapFrom);
+        return taskRepo.findById(taskId).map(task -> {
+            TaskBase taskBase = taskEntityMapper.mapFrom(task);
+            loadCommentsForTask(taskBase);
+            return taskBase;
+        });
     }
 
     @Override
@@ -103,11 +108,20 @@ public class TaskDaoImpl implements TaskDao {
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskToBeUpdated.getId()));
         TaskEntity taskEntity = taskEntityMapper.mapToForUpdate(taskToBeUpdated, existingEntity);
         TaskEntity savedEntity = taskRepo.save(taskEntity);
-        return taskEntityMapper.mapFrom(savedEntity);
+        TaskBase taskBase = taskEntityMapper.mapFrom(savedEntity);
+        loadCommentsForTask(taskBase);
+        return taskBase;
     }
 
     @Override
     public void deleteTask(String taskId) {
         taskRepo.deleteById(taskId);
+        commentDao.deleteCommentsByTaskId(taskId);
+    }
+
+
+    private void loadCommentsForTask(TaskBase taskBase) {
+        List<CommentBase> comments = commentDao.getCommentsByTaskId(taskBase.getId());
+        taskBase.setComments(comments);
     }
 }

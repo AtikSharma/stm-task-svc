@@ -1,7 +1,12 @@
 package com.taskmanager.task.entity;
 
+import com.taskmanager.common.model.AuditEntity;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -12,8 +17,8 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class CommentEntity {
+@SuperBuilder(toBuilder = true)
+public class CommentEntity extends AuditEntity {
 
     @Id
     private String id;
@@ -27,5 +32,9 @@ public class CommentEntity {
     @NotNull
     private String content;
 
-    private LocalDateTime createdAt;
+    private boolean isDeleted = false;
+
+    private LocalDateTime deletedAt;
+
+    private String deletedBy;
 }

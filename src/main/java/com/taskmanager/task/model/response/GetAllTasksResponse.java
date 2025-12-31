@@ -1,7 +1,7 @@
 package com.taskmanager.task.model.response;
 
 import com.taskmanager.common.model.ServiceResponse;
-import com.taskmanager.common.model.TaskBase;
+import com.taskmanager.common.model.response.TaskResponse;
 import lombok.*;
 
 import java.util.List;
@@ -13,6 +13,6 @@ import java.util.List;
 @Builder
 public class GetAllTasksResponse extends ServiceResponse {
 
-    private List<TaskBase> tasks;
+    private List<TaskResponse> tasks;
 
 }

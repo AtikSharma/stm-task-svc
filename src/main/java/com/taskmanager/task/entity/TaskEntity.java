@@ -2,25 +2,24 @@ package com.taskmanager.task.entity;
 
 import com.taskmanager.common.enums.Priority;
 import com.taskmanager.common.enums.TaskStatus;
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import com.taskmanager.common.model.AuditEntity;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
+@Getter
+@Setter
+@SuperBuilder(toBuilder = true)
 @Document(collection = "tasks")
-@Data
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class TaskEntity {
+public class TaskEntity extends AuditEntity {
 
     @Id
     private String id;
@@ -35,20 +34,10 @@ public class TaskEntity {
 
     private TaskStatus status;
 
-
     private Priority priority = Priority.MEDIUM;
 
     private LocalDate dueDate;
 
-    @NotNull
-    private String createdBy;
-
     private String assignedTo;
-
-    private String updatedBy;
-
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    private LocalDateTime updatedAt = LocalDateTime.now();
 
 }
